@@ -52,6 +52,21 @@ def get_activities():
     return activities
 
 
+def validate_mergington_email(email: str) -> str:
+    """Validate email format and normalize to lowercase."""
+    normalized_email = email.strip().lower()
+    if "@" not in normalized_email:
+        raise HTTPException(status_code=400,
+                            detail="Email must be a @mergington.edu address")
+
+    local_part, domain = normalized_email.rsplit("@", 1)
+    if domain != "mergington.edu" or not local_part:
+        raise HTTPException(status_code=400,
+                            detail="Email must be a @mergington.edu address")
+
+    return normalized_email
+
+
 @app.post("/activities/{activity_name}/signup")
 def signup_for_activity(activity_name: str, email: str):
     """Sign up a student for an activity"""
@@ -59,9 +74,14 @@ def signup_for_activity(activity_name: str, email: str):
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
 
+    normalized_email = validate_mergington_email(email)
+
     # Get the specific activity
     activity = activities[activity_name]
 
-    # Add student
-    activity["participants"].append(email)
-    return {"message": f"Signed up {email} for {activity_name}"}
+    if normalized_email in activity["participants"]:
+        raise HTTPException(status_code=400,
+                            detail="Email is already signed up for this activity")
+
+    activity["participants"].append(normalized_email)
+    return {"message": f"Signed up {normalized_email} for {activity_name}"}
